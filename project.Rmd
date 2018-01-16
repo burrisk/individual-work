@@ -1,0 +1,418 @@
+---
+title: "Project: Exploring PITCHf/x"
+output:
+  html_document:
+    css: project.css
+    highlight: pygments
+    theme: cerulean
+  pdf_document: default
+---
+
+You and your teammates have been hired to work for TruMedia, a company that specializes in data visualization and analytics in professional sports.  TruMedia uses two main data sets provided by Major League Baseball: PITCHf/x and StatCast.  
+
+PITCHf/x is a system developed by Sportvision and introduced in Major League Baseball (MLB) during the 2006 playoffs. It uses two cameras to record the position of the pitched baseball during its flight from the pitcher’s hand to home plate, and various parameters are measured and calculated to describe the trajectory and speed of each pitch. It is now instituted in all ballparks in MLB.
+
+Your boss wants you to come up with informative and creative ways of visualizing and analyzing the PITCHf/x data to include in the company's upcoming presentation to the Cleveland Indians.  In doing this, you will perform exploratory data analysis (EDA), inference, modeling, and prediction. You have been introduced to some of these concepts already, and you will learn about the others later in the course.
+
+The data can be loaded directly in RStudio using the following command:
+
+```{r}
+load(url("http://stat.duke.edu/courses/Summer17/sta101.001-2/uploads/project/mondayBaseball.Rdata"))
+```
+
+* * *
+
+## Data
+
+The data set is comprised of all pitches thrown on Mondays during the 2016 MLB regular season, excluding intentional walks.
+
+Some of these variables are only there for informational purposes and do
+not make any sense to include in a statistical analysis. It is up to you
+to decide which variables are meaningful and which should be omitted. For
+example, information about the name of each batter, pitcher, catcher, and umpire is included in the data, but some players have the same name.  The ID of each player is the unique identifier.
+
+You might also choose to omit certain observations or restructure some of
+the variables to make them suitable for answering your research questions.
+
+For those of you unfamiliar with the game of baseball, I refer you to the following link(s):
+
+[Baseball for Beginners](http://www.pbs.org/kenburns/baseball/beginners/)
+
+[Pitch (Wikipedia)](https://en.wikipedia.org/wiki/Pitch_(baseball))
+
+[Team Abbreviations](https://en.wikipedia.org/wiki/Wikipedia:WikiProject_Baseball/Team_abbreviations)
+
+Note that the third link is has an incorrect entry: CWS stands for the Chicago White Sox.
+
+### Codebook
+
+1. `gameString`: Unique identifer for each game
+1. `gameDate`: Date of the game
+1. `visitor`: The abbreviation for the visiting team
+1. `home`: The abbreviation for the home team
+1. `inning`: The inning number
+1. `side`: The half of the inning, top or bottom (T or B)
+1. `balls`: The number of balls (pitches outside the strike zone) that the pitcher has thrown in the at-bat, calculated before the pitch is thrown
+1. `strikes`: The number of strikes that the batter has obtained in the at-bat, calculated before the pitch is thrown
+1. `outs`: The number of players on the batting team that have been declared out in the current inning, calculated before the pitch is thrown 
+1. `batterId`: Unique ID for the batter
+1. `batterName`: First and last name of the batter
+1. `batterHand`: Handedness of the batter (left or right)
+1. `batterPosition`: Position of the batter
+1. `pitcherId`: Unique ID for the pitcher
+1. `pitcherName`: First and last name of the pitcher
+1. `pitcherHand`: Handedness of the pitcher (left or right)
+1. `timesFaced`: Number of times the batter has faced the pitcher in current game (includes current at-bat)
+1. `catcherId`: Unique ID for the catcher
+1. `catcherName`: First and last name of the catcher
+1. `umpireId`: Unique ID for the umpire
+1. `umpireName`: First and last name of the umpire
+1. `probCalledStrike`: Estimated probability that the umpire will call the pitch a strike, if the batter does not swing, based on TruMedia's model
+1. `pitchResult`: Result of the pitch, one of:
++ SS - Swinging Strike
++ SL - Strike Looking
++ F - Foul
++ FB - Foul Bunt
++ MB - Missed Bunt
++ B - Ball
++ BID - Ball in Dirt
++ HBP - Hit by Pitch
++ IB - Intentional Ball
++ PO - Pitch Out 
++ IP - Ball in Play
++ AS - Automatic Strike
++ AB - Automatic Ball
++ CI - Catcher Interference
++ UK - Unknown
+24. `pitchType`: Type of pitch, one of:
++ FF - Four-seam fastball
++ FT - Two-seam fastball
++ SL - Slider
++ CU - Curveball
++ CH - Changeup
++ FC - Cut-fastball
++ SI - Sinker
++ KC - Knuckle curve ball
++ FS - Split-finger fastball
++ UN - Unknown
++ KN - Knuckleball
++ EP - Eephus
++ SC - Screwball
+25. `releaseVelocity`: Pitch velocity (mph)
+1. `spinRate`: Pitch spin rate (rpm)
+1. `spinDir`: From the catcher’s perspective, the angle (from 0 to 360) between the the pole
+around which the ball is rotating and the positive x-axis
+1. `locationHoriz`: Distance in feet from the horizontal center of the plate as the ball crosses the front plane of the plate, negative values are inside to right handed batters.
+1. `locationVert`: Height in feet above the ground as the ball crosses the front plane of the plate
+1. `movementHoriz`: The horizontal movement, in inches, of the pitch between the release point and home plate, as compared to a theoretical pitch thrown at the same speed with no spin-induced movement
+1. `movementVert`: The vertical movement, in inches, of the pitch between the release point and home plate, as compared to a theoretical pitch thrown at the same speed with no spin-induced movement. 
+1. `battedBallType`: Given that the pitch is hit in play, one of:
++ PU - Pop-up
++ FB - Fly Ball
++ GB - Ground Ball
++ LD - Line Drive
++ BPU - Bunt Pop-up
++ BGB - Bunt Ground Ball
++ UN - Unknown
+33. `battedBallAngle`: Angle in degrees of the batted ball, -45 is down the left field line, 45 is down the right field line
+1. `battedBallDistance`: Distance in feet from home plate to where the ball was fielded
+1. `paResult`: Ultimate result of the plate appearance, one of:
++ S - Single
++ D - Double
++ T - Triple
++ HR - Home Run
++ BB - Walk
++ IBB - Intentional Walk
++ HBP - Hit By Pitch
++ IP_OUT - In play, batter out
++ K - Strikeout
++ FC - Fielder's choice
++ DP - Double play
++ TP - Triple play
++ SH - Sacrifice bunt
++ SF - Sacrifice fly
++ ROE - Reached base on error
++ SH_ROE - Sacrifice bunt ROE
++ SF_ROE - Sacrifice fly ROE
++ BI - Batter Interference
++ CI - Catcher Interference
++ FI - Fielder Interference
++ NO_PLAY - No play (example: runner caught stealing)
+
+* * *
+## Getting Started
+Here are some lines of code that may help you get started analyzing the data.
+
+The following code chunk subsets the data to include only the pitches that were hit in play by the batter, examining the distribution of batted ball distance:
+
+```{r, message = FALSE}
+# Load Packages
+library(dplyr)
+library(ggplot2)
+
+# Creates new data set with only pitches hit in play
+mondayBaseballInPlay <- mondayBaseball %>%
+  filter(pitchResult == "IP")
+
+ggplot(data = mondayBaseballInPlay, aes(x = battedBallDistance)) +
+  geom_histogram(fill = "skyblue", color = "black") +
+  xlab("Distance From Home Plate") + # Axis labels
+  ylab("Count") +
+  ggtitle("Distribution of Batted Ball Distance") + # Creates the title
+  theme(plot.title = element_text(hjust = 0.5)) # Centers the title
+```
+
+This code chunk finds the pitchers who throw the hardest average four-seam fastball (minimum 30 fastballs)
+
+```{r}
+hardest_throwers <- mondayBaseball %>%
+  filter(pitchType == "FF") %>% # Only keep four-seam fastballs
+  group_by(pitcherId, pitcherName) %>% # For each pitcher, find mean velocity and number of pitches
+  summarise(mean_velocity = mean(releaseVelocity), n_pitches = n()) %>%
+  filter(n_pitches >= 30) %>% # Only keep pitchers who threw greater than 30 fastballs
+  arrange(desc(mean_velocity)) # Sort by mean velocity
+
+head(hardest_throwers) # Display first six rows of data
+```
+
+For more information on using the very powerful `dplyr` R package, consult the following [link](http://genomicsclass.github.io/book/pages/dplyr_tutorial.html).
+
+***
+
+## Stages of the project
+
+You will complete this project in three (or four) stages:
+
+1. Stage 1: Proposal (25 points)
+2. Stage 2: EDA and Inference (35 points)
+3. Stage 3: Modeling and Prediction (40 points)
+4. Stage 4: Pitch classification competition (Extra credit)
+
+The remainder of this document outlines the requirements and expectations for
+all three stages of the project. You should read the entire document before getting
+started. The requirements and expectations for Stage 1 will only make sense in 
+context of those for the later stages.
+
+### Stage 1: Proposal (25 points)
+
+#### Content
+
+Your proposal should contain the following:
+
+1. **Data**: (3 points) Describe how the observations in the sample are 
+collected, and the implications of this data collection method on the scope 
+of inference (generalizability / causality).
+
+2. **Research questions**: (10 points) Come up with at least three research 
+questions that you want to answer using these data. You should phrase your 
+research questions in a way that matches up with the scope of inference your 
+dataset allows for. Make sure that at least two of these questions involve at 
+least three variables. You are welcomed to create new variables based on 
+existing ones. Note that you will have the option to update / revise / change 
+these questions for your presentation at the end of the semester.
+
+3. **Timeline**: (6 points) Sketch out a timeline for the work you will do to 
+complete this project. Be as detailed and precise as possible and be realistic.
+
+4. **Teamwork**: (6 points) Describe in detail how you will divvy up the work 
+between team members and what aspects of the project you will complete 
+together as a team. Note that during the presentations each member needs to 
+be able to answer questions about all aspects of the work, regardless of 
+whether they took the lead on that section or not.
+
+#### Format & length
+
+Your proposal should be written using the R Markdown template, so that all 
+R code, output, and plots will be automatically included in your write up. 
+
+Download the template for the proposal:
+
+```{r tidy=FALSE, eval=FALSE}
+download.file("http://www2.stat.duke.edu/courses/Summer17/sta101.001-2/uploads/rmd/sta101_proposal.Rmd", destfile = "sta101_proposal.Rmd")
+```
+
+Your proposal should not exceed 5 pages (view a print preview to determined 
+length).
+
+#### Grading
+
+Your proposal will be graded out of 25 points (as outlined above), and will 
+make up 25% of your overall project score.
+
+The following will result in deductions:
+
+- Late: -1 points for each day late
+- Reproducibility issues, requiring to make changes to the R Markdown file 
+to knit the document: -3 points
+- Each page over limit: -2 points per page (view print preview to confirm 
+length)
+
+* * *
+
+### Stage 2: EDA and Inference (35 points)
+
+#### Content
+
+1. **Introduction:** Outline your main research question(s) to your boss.
+
+2. **EDA**: (15 points) Perform exploratory data analysis that addresses the three research questions you outlined in your proposal. Your EDA should contain numerical summaries and visualizations. Each R output and plot should be accompanied by a brief interpretation.  Instead of limiting yourself to relationships between just two variables, broaden the scope of your analysis and employ creative approaches that evaluate relationships between two variables while controlling for another.  In your presentation, this is your "WOW" factor; try to make your figures look as professional and awesome as possible.
+
+3. **Inference:** (10 points) Use one of your research questions (or come up with a new
+   one depending on feedback from the proposal) that can be answered 
+   with a hypothesis test or a confidence interval, e.g. "Is there a 
+   difference in mean batting average between positions?" or "Is there a difference between the average velocity of Zach Britton's four-seam fastball and Andrew Miller's four-seam fastball". This question could be used to shed some light on your choice of the "best" linear model.  
+   Carry out the appropriate inference task to answer your question.
+   
+4. **Presentation** (10 points) Present your work on the project so far in-class.  See [the presentation format](#presentation-format-and-length) for more details.
+
+**R Markdown:** All code used to generate the statistics and plots in your presentation should be organized and submitted in an R Markdown document.
+
+Download the template for the project via the link below.  Note that for stage 2 you do not need to complete the modeling, prediction, or conclusion sections.  Use the same template for stage 3, but completing all of the sections.
+
+```{r tidy=FALSE, eval=FALSE}
+download.file("http://www2.stat.duke.edu/courses/Summer17/sta101.001-1/uploads/rmd/sta101_project.Rmd", destfile = "sta101_project.Rmd")
+```
+
+There is no length limit for this document.
+
+* * *
+
+### Stage 3: Modeling and Prediction (40 points)
+
+#### Content
+
+1. **Introduction:** Outline your main research question(s) to your boss.
+
+2. **EDA**: Taken from Stage 2.  This can be revised with any additional figures generated since the inital presentation
+
+3. **Inference:** Taken from Stage 2.
+
+4. **Modeling:** (15 points) Develop a multiple linear regression model to predict
+   a numerical variable in the dataset.
+
+5. **Prediction:** (10 points) Extrapolate your model to a a random sample of 1000 pitches thrown on Tuesday during the MLB regular season (using the `predict` function in R). Also quantify the 
+   uncertainty around your predictions using an appropriate interval and analyze your residuals on the outside data.  You can load the data with the following command:
+  
+```{r}
+load(url("http://stat.duke.edu/courses/Summer17/sta101.001-2/uploads/project/tuesdayBaseball.Rdata"))
+```
+   
+   
+6. **Conclusion:** A brief summary of your findings from the previous 
+   sections **without** repeating your statements from earlier as well
+   as a discussion of what you have learned about the data and your research 
+   question(s). You should also discuss any shortcomings of your current 
+   study (either due to data collection or methodology) and include ideas 
+   for possible future research.
+   
+7. **Presentation:** (15 points) You will give another in-class presentation that describes and assesses your model and predictions in the context of your research questions.  Discuss what future directions you could take the project if you had another month to work on it.
+
+***
+
+### Stage 4: Pitch Classification Challenge (Extra credit)
+***Note: This is an individual assignment!*** 
+In addition to EDA, inference, and modeling, classification of cases to categories is something that statisticians do a lot.  Given 1000 randomly sampled pitches from Wednesday baseball games in 2016, your goal is to classify the type of each pitch (four-seam fastball, curveball, etc.) using information such as release velocity, movement, location, pitcher handedness, etc.  Start by loading in the following data:
+
+```{r}
+load(url("http://stat.duke.edu/courses/Summer17/sta101.001-2/uploads/project/pitchPredict.Rdata"))
+```
+
+The code below creates a new variable `pitch_type_predict` that classifies the pitch as a split-finger fastball if the release velocity is greater than 90 mph and a curveball otherwise.
+
+```{r}
+pitchPredict <- pitchPredict %>%
+  mutate(pitch_type_predict = ifelse(releaseVelocity > 90, "FS", "CU"))
+```
+
+You can extract your predictions and save them as a .Rdata file as follows:
+
+```{r}
+predictions <- pitchPredict$pitch_type_predict
+save(predictions, file = "pitch_predictions.Rdata")
+```
+
+When constructing your heuristic for classifying pitches, use the `mondayBaseball` data to help you classify pitches, since it has nearly 80,000 examples for you (or your model) to learn from.  If you're stuck on where to start, feel free to visit me during office hours.  
+
+#### Submission
+Submit the .Rdata file that contains your predictions on Sakai under the Assignments tab.  You are allowed a maximum of three submissions.  After each submission, I will consult my database that contains the true classifications of each of the 1000 pitches in this data set and tell you the percentage of pitches you classified correctly.  You can then adjust your approach to hopefully improve your accuracy.
+
+#### Prizes
+Anyone who submits their predictions and classifies at least 40% of pitches correctly will receive five percent extra credit on their project.
+
+The top three individual submissions (judged by percent classified correctly) will receive an additional ten percent extra credit on the project.  Moreover, the owner of the top submission will receive two tickets to a Durham Bulls game of their choice!  
+
+***
+
+#### Presentation format and length
+
+You will give a ten minute presentation of your work. Each team member 
+must speak during this presentation. The time limit is firm, you will be 
+asked to stop at the end of ten minutes. This is not a lot of time, so
+you must decide carefully what you will highlight during your presentation 
+and practice to make sure you can fit everything you want to say in the time 
+limit.
+
+#### Grading
+
+Grading of the project will take into account:
+
+- Correctness: Are the procedures and explanations correct?
+- Presentation: What was the quality of the presentation?
+- Content/Critical thought: Did your team think carefully and creatively about the problem?
+- Tidyness: Is your code organized well?
+
+* * *
+
+## Submission
+
+The write-ups will be submitted online on Sakai under Assignments and the presentations should be emailed to me the night before the presentation (by 11:55 pm). These will be time stamped, and the late penalty will be applied based on the time stamp. Only one submission per 
+team required.
+
+1. R Markdown file (.Rmd)
+2. HTML output (.html)
+
+I will download your R Markdown file and run your code to confirm 
+reproducibility of your work. Grading will be based on the document I 
+compile, so make sure that your R Markdown file contains everything 
+necessary to compile your entire work.
+
+* * *
+
+## Teamwork and grading
+
+Team scores for the presentations will be adjusted based 
+on team peer evaluation data to determine each student's individual grade. 
+You will be asked to fill out a survey where you rate the contribution of 
+each team member. Filling out the survey is a prerequisite for receiving a 
+project score. 
+
+Each team members must be present for at least one presentation. Failure to do so will
+result in a 0 on the project for the absent team member.
+
+Note that each student must complete the project and score at least 30% of 
+total possible points on the project in order to pass this class.
+
+* * *
+
+## Honor code
+
+You may not discuss this project in any way with anyone outside your
+team, besides the professor. Failure to abide by this policy
+will result in a 0 for all teams involved.
+
+* * *
+
+## Tips
+
+This project is an opportunity to apply what you have learned about 
+descriptive statistics, graphical methods, correlation and regression, 
+and hypothesis testing and confidence intervals.
+
+The goal is not to do an exhaustive data analysis i.e., do not calculate 
+every statistic and procedure you have learned for every variable, but 
+rather to show that you are proficient at using R to analyze and 
+that you are proficient at interpreting and presenting the results.
+
+You might consider critiquing your own method, such as issues pertaining 
+to the reliability of the data and the appropriateness of the statistical 
+analysis you used within the context of this specific data set.
